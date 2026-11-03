@@ -141,11 +141,35 @@
   const map = L.map("map", { zoomControl: false, zoomSnap: 0.25, minZoom: 11, maxZoom: 19 })
     .setView(toLatLng(CFG.ust.location), 16.5);
 
-  // OpenStreetMap tiles; the "basemap" CSS class mutes them (and darkens them in dark mode)
+  // OpenStreetMap tiles; the "basemap" CSS class turns them into a calm greyscale map
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19, className: "basemap",
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   }).addTo(map);
+
+  // UST campus outline (OpenStreetMap relation 21046172), highlighted in yellow so users
+  // always see where UST is without having to look for it
+  const UST_OUTLINE = [[14.612791,120.989655],[14.611051,120.98772],[14.609905,120.986409],[14.606849,120.989376],
+    [14.607999,120.99063],[14.608304,120.990962],[14.608595,120.99128],[14.608775,120.991489],[14.609331,120.992127],
+    [14.609467,120.992283],[14.609721,120.992572],[14.60978,120.992519],[14.611322,120.991053],[14.612125,120.990286],
+    [14.612408,120.990018],[14.612513,120.989919]];
+  const UST_CENTER = [14.6098, 120.9899];
+
+  L.polygon(UST_OUTLINE, { className: "ust-area", interactive: false }).addTo(map);
+  L.marker(UST_CENTER, {
+    icon: L.divIcon({
+      className: "ust-label-wrap", iconSize: [80, 30], iconAnchor: [40, 15],
+      html: '<span class="ust-label"><svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>UST</span>',
+    }),
+    zIndexOffset: 500, keyboard: false, title: "University of Santo Tomas",
+  }).on("click", () => showUST()).addTo(map);
+
+  /** Zoom to the UST campus (plus the start point if the user moved it). */
+  function showUST() {
+    const bounds = L.latLngBounds(UST_OUTLINE);
+    if (!state.start.isDefault) bounds.extend(toLatLng(state.start.location));
+    fitTo(bounds.pad(0.35), 17);
+  }
 
   const placeLayer = L.layerGroup().addTo(map);
   const routeLayer = L.layerGroup().addTo(map);
@@ -279,6 +303,7 @@
   // map buttons
   $("#zoom-in").addEventListener("click", () => map.zoomIn());
   $("#zoom-out").addEventListener("click", () => map.zoomOut());
+  $("#ust-btn").addEventListener("click", () => showUST());
   $("#fit-btn").addEventListener("click", () => {
     if (state.view === "route" && state.route) fitTo(L.latLngBounds(state.route.bbox), 17.5);
     else fitPlaces();
@@ -625,7 +650,7 @@
         const km = haversineKm(CFG.ust.location, loc);
         if (km > 30) toast(`You're about ${Math.round(km)} km from UST, so routes will be long.`);
         setStart(loc, "Your location", { lookup: true });
-        if (state.view === "explore") fitPlaces();
+        if (state.view === "explore") showUST();
       },
       (err) => {
         btn.classList.remove("is-busy");
@@ -843,7 +868,7 @@
     syncSelectedPin();
     $("#map").classList.remove("is-routing");
     setView("explore");
-    fitPlaces();
+    showUST();
   }
 
   $("#back-btn").addEventListener("click", () => {
@@ -909,7 +934,8 @@
   buildTypeChips();
   renderStartUI();
   renderStartMarker();
-  loadPlaces({ fit: true }).then(() => {
+  showUST(); // open centered on the UST campus
+  loadPlaces().then(() => {
     const dest = destFromHash(); // open a shared link like /#to=jollibee
     if (dest) {
       history.replaceState(null, "", location.pathname);
