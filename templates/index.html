@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kainterra - UST Food Trip Navigator</title>
+  <!-- leaflet for the map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <header>
+    <h1>Kain<span>terra</span></h1>
+    <p>Food places near UST, with directions</p>
+  </header>
+
+  <div class="layout">
+    <aside>
+      <!-- search (calls /search) -->
+      <section>
+        <h2>Search</h2>
+        <form id="search-form" class="search-row">
+          <input id="search-q" placeholder="Any place near UST, e.g. tapsilogan" maxlength="100" autocomplete="off">
+          <button type="submit">Search</button>
+        </form>
+        <div id="search-results"></div>
+      </section>
+
+      <!-- filters -->
+      <section>
+        <h2>Filter</h2>
+        <form method="get" id="filters" class="row">
+          <div>
+            <label for="type">Food type</label>
+            <select name="type" id="type">
+              <option value="">All</option>
+              {% for t in types %}
+                <option value="{{ t }}" {% if t == food_type %}selected{% endif %}>{{ t }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label for="budget">Price per person</label>
+            <select name="budget" id="budget">
+              <option value="">All</option>
+              {% for b in budgets %}
+                <option value="{{ b }}" {% if b == budget %}selected{% endif %}>{{ b }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </form>
+      </section>
+
+      <!-- directions form -->
+      <section>
+        <h2>Directions</h2>
+          <form method="post" id="directions">
+            <!-- filled by "Go here" in the search results -->
+            <input type="hidden" name="dest" id="dest" value="{{ searched.location if searched else '' }}">
+            <input type="hidden" name="dest_name" id="dest_name" value="{{ searched.name if searched else '' }}">
+            <input type="hidden" name="dest_address" id="dest_address" value="{{ searched.address if searched else '' }}">
+
+            <label>Destination</label>
+            <div class="dest-chip" id="dest-chip" hidden>
+              <span id="dest-chip-text"></span>
+              <button type="button" id="dest-clear" title="Clear and choose from the list">&times;</button>
+            </div>
+            <div id="place-wrap">
+              {% if places %}
+                <select name="place" id="place" aria-label="Food place">
+                  {% for p in places %}
+                    <option value="{{ p.name }}" {% if place and p.name == place.name %}selected{% endif %}>
+                      {{ p.name }} · {{ p.type }} · {{ p.budget }}
+                    </option>
+                  {% endfor %}
+                </select>
+                <p class="hint">{{ places|length }} listed places · or use the search bar above</p>
+              {% else %}
+                <p class="hint">No listed places match that filter. Try the search bar above.</p>
+              {% endif %}
+            </div>
+
+            <label for="start">Start (lat,lng) · blank = UST</label>
+            <input name="start" id="start" placeholder="{{ ust_location }}" value="{{ start }}">
+            <div class="row">
+              <button type="button" class="ghost" id="use-location">Use my location</button>
+              <button type="button" class="ghost" id="reset-start">Reset to UST</button>
+            </div>
+
+            <div class="row">
+              <div>
+                <label for="route_type">Travel</label>
+                <select name="route_type" id="route_type">
+                  {% for code, name in route_types.items() %}
+                    <option value="{{ code }}" {% if code == route_type %}selected{% endif %}>{{ name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div>
+                <label for="unit">Units</label>
+                <select name="unit" id="unit">
+                  {% for code, name in units.items() %}
+                    <option value="{{ code }}" {% if code == unit %}selected{% endif %}>{{ name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <button type="submit" class="primary">Get directions</button>
+            <p class="hint">Tip: click a dot on the map to pick a place, or click anywhere else to set your start.</p>
+          </form>
+      </section>
+
+      <!-- result -->
+      {% if error %}
+        <section><p class="error">{{ error }}</p></section>
+      {% endif %}
+
+      {% if route %}
+        <section>
+          <h2>Route</h2>
+          <p class="route-to">{{ place.name }}<small>{{ place.address }} · from {{ start_label }}</small></p>
+          <div class="stats">
+            <div class="stat"><b>{{ "%.2f"|format(route.distance) }}</b><small>{{ units[unit] }}</small></div>
+            <div class="stat"><b>{{ route.time }}</b><small>travel time</small></div>
+            <div class="stat"><b>{{ route_types[route_type] }}</b><small>mode</small></div>
+          </div>
+          <ol class="steps">
+            {% for s in route.steps %}
+              <li><span class="text">{{ s.narrative }}</span><span class="dist">{{ "%.2f"|format(s.distance) }} {{ units[unit] }}</span></li>
+            {% endfor %}
+          </ol>
+        </section>
+      {% endif %}
+
+      <footer>Routes by GraphHopper · Map and place data © OpenStreetMap contributors</footer>
+    </aside>
+
+    <div id="map"></div>
+  </div>
+
+  <script>
+    // data for map.js
+    window.KAINTERRA = {
+      places: {{ places|tojson }},
+      types: {{ types|tojson }},
+      typeCounts: {{ type_counts|tojson }},
+      activeType: {{ (food_type or "")|tojson }},
+      ust: {{ ust_location|tojson }},
+      routePoints: {{ (route.points if route else [])|tojson }},
+      selected: {{ (place.name if place else "")|tojson }},
+      searched: {{ searched|tojson }},
+    };
+  </script>
+  <script src="{{ url_for('static', filename='js/map.js') }}"></script>
+</body>
+</html>
