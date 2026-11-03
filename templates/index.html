@@ -2,156 +2,160 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kainterra - UST Food Trip Navigator</title>
-  <!-- leaflet for the map -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Find food places near the University of Santo Tomas and get directions.">
+  <meta name="theme-color" content="#f4f4f1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0e0f11" media="(prefers-color-scheme: dark)">
+  <title>Kainterra · Food trips around UST</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23ffcc00'/%3E%3Ccircle cx='16' cy='14' r='5' fill='%230a0a0a'/%3E%3Cpath d='M16 27l-6-8h12z' fill='%230a0a0a'/%3E%3C/svg%3E">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-  <header>
-    <h1>Kain<span>terra</span></h1>
-    <p>Food places near UST, with directions</p>
-  </header>
+  <!-- thin loading bar, shown while any request is running -->
+  <div class="progress" id="progress" aria-hidden="true"></div>
 
-  <div class="layout">
-    <aside>
-      <!-- search (calls /search) -->
-      <section>
-        <h2>Search</h2>
-        <form id="search-form" class="search-row">
-          <input id="search-q" placeholder="Any place near UST, e.g. tapsilogan" maxlength="100" autocomplete="off">
-          <button type="submit">Search</button>
-        </form>
-        <div id="search-results"></div>
-      </section>
+  <!-- full-screen map -->
+  <div id="map" aria-label="Map of food places near UST"></div>
 
-      <!-- filters -->
-      <section>
-        <h2>Filter</h2>
-        <form method="get" id="filters" class="row">
-          <div>
-            <label for="type">Food type</label>
-            <select name="type" id="type">
-              <option value="">All</option>
-              {% for t in types %}
-                <option value="{{ t }}" {% if t == food_type %}selected{% endif %}>{{ t }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div>
-            <label for="budget">Price per person</label>
-            <select name="budget" id="budget">
-              <option value="">All</option>
-              {% for b in budgets %}
-                <option value="{{ b }}" {% if b == budget %}selected{% endif %}>{{ b }}</option>
-              {% endfor %}
-            </select>
-          </div>
-        </form>
-      </section>
-
-      <!-- directions form -->
-      <section>
-        <h2>Directions</h2>
-          <form method="post" id="directions">
-            <!-- filled by "Go here" in the search results -->
-            <input type="hidden" name="dest" id="dest" value="{{ searched.location if searched else '' }}">
-            <input type="hidden" name="dest_name" id="dest_name" value="{{ searched.name if searched else '' }}">
-            <input type="hidden" name="dest_address" id="dest_address" value="{{ searched.address if searched else '' }}">
-
-            <label>Destination</label>
-            <div class="dest-chip" id="dest-chip" hidden>
-              <span id="dest-chip-text"></span>
-              <button type="button" id="dest-clear" title="Clear and choose from the list">&times;</button>
-            </div>
-            <div id="place-wrap">
-              {% if places %}
-                <select name="place" id="place" aria-label="Food place">
-                  {% for p in places %}
-                    <option value="{{ p.name }}" {% if place and p.name == place.name %}selected{% endif %}>
-                      {{ p.name }} · {{ p.type }} · {{ p.budget }}
-                    </option>
-                  {% endfor %}
-                </select>
-                <p class="hint">{{ places|length }} listed places · or use the search bar above</p>
-              {% else %}
-                <p class="hint">No listed places match that filter. Try the search bar above.</p>
-              {% endif %}
-            </div>
-
-            <label for="start">Start (lat,lng) · blank = UST</label>
-            <input name="start" id="start" placeholder="{{ ust_location }}" value="{{ start }}">
-            <div class="row">
-              <button type="button" class="ghost" id="use-location">Use my location</button>
-              <button type="button" class="ghost" id="reset-start">Reset to UST</button>
-            </div>
-
-            <div class="row">
-              <div>
-                <label for="route_type">Travel</label>
-                <select name="route_type" id="route_type">
-                  {% for code, name in route_types.items() %}
-                    <option value="{{ code }}" {% if code == route_type %}selected{% endif %}>{{ name }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div>
-                <label for="unit">Units</label>
-                <select name="unit" id="unit">
-                  {% for code, name in units.items() %}
-                    <option value="{{ code }}" {% if code == unit %}selected{% endif %}>{{ name }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-            </div>
-            <button type="submit" class="primary">Get directions</button>
-            <p class="hint">Tip: click a dot on the map to pick a place, or click anywhere else to set your start.</p>
-          </form>
-      </section>
-
-      <!-- result -->
-      {% if error %}
-        <section><p class="error">{{ error }}</p></section>
-      {% endif %}
-
-      {% if route %}
-        <section>
-          <h2>Route</h2>
-          <p class="route-to">{{ place.name }}<small>{{ place.address }} · from {{ start_label }}</small></p>
-          <div class="stats">
-            <div class="stat"><b>{{ "%.2f"|format(route.distance) }}</b><small>{{ units[unit] }}</small></div>
-            <div class="stat"><b>{{ route.time }}</b><small>travel time</small></div>
-            <div class="stat"><b>{{ route_types[route_type] }}</b><small>mode</small></div>
-          </div>
-          <ol class="steps">
-            {% for s in route.steps %}
-              <li><span class="text">{{ s.narrative }}</span><span class="dist">{{ "%.2f"|format(s.distance) }} {{ units[unit] }}</span></li>
-            {% endfor %}
-          </ol>
-        </section>
-      {% endif %}
-
-      <footer>Routes by GraphHopper · Map and place data © OpenStreetMap contributors</footer>
-    </aside>
-
-    <div id="map"></div>
+  <!-- map buttons (top right) -->
+  <div class="map-tools" role="toolbar" aria-label="Map controls">
+    <div class="tool-group">
+      <button class="tool" id="zoom-in" title="Zoom in" aria-label="Zoom in">
+        <svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+      <button class="tool" id="zoom-out" title="Zoom out" aria-label="Zoom out">
+        <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14"/></svg>
+      </button>
+    </div>
+    <button class="tool" id="fit-btn" title="Show everything" aria-label="Fit map to places or route">
+      <svg class="i" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+    </button>
   </div>
 
-  <script>
-    // data for map.js
-    window.KAINTERRA = {
-      places: {{ places|tojson }},
-      types: {{ types|tojson }},
-      typeCounts: {{ type_counts|tojson }},
-      activeType: {{ (food_type or "")|tojson }},
-      ust: {{ ust_location|tojson }},
-      routePoints: {{ (route.points if route else [])|tojson }},
-      selected: {{ (place.name if place else "")|tojson }},
-      searched: {{ searched|tojson }},
-    };
-  </script>
-  <script src="{{ url_for('static', filename='js/map.js') }}"></script>
+  <!-- banner shown while picking a start on the map -->
+  <div class="map-hint" id="map-hint" role="status">
+    <span>Tap the map to set start</span>
+    <button class="map-hint__cancel" id="pick-cancel">Cancel</button>
+  </div>
+
+  <!-- side panel (desktop) / bottom sheet (phones) -->
+  <aside class="panel" id="panel">
+    <button class="sheet-handle" id="sheet-handle" aria-label="Expand panel" aria-expanded="false"><span></span></button>
+
+    <header class="panel__head">
+      <div class="brand">
+        <span class="brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="10" r="3.6"/><path d="M12 21l-5.2-7h10.4z"/></svg>
+        </span>
+        <h1 class="brand__name">Kainterra</h1>
+      </div>
+
+      {% if not config.has_key %}
+      <div class="notice" role="note">Add <code>GRAPHHOPPER_KEY</code> to <code>.env</code> to enable directions.</div>
+      {% endif %}
+
+      <div class="search" id="search">
+        <label class="search__field">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <span class="sr-only">Search places</span>
+          <input id="search-input" type="search" autocomplete="off" spellcheck="false"
+                 placeholder="Search"
+                 role="combobox" aria-expanded="false" aria-controls="search-results" aria-autocomplete="list">
+          <button type="button" class="search__clear" id="search-clear" aria-label="Clear search" hidden>
+            <svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </label>
+        <div class="results" id="search-results" role="listbox" aria-label="Search results"></div>
+      </div>
+    </header>
+
+    <div class="views">
+      <!-- view 1: explore food places -->
+      <section class="view is-active" id="view-explore" aria-label="Food places">
+        <div class="start-card">
+          <span class="start-card__dot" aria-hidden="true"></span>
+          <div class="start-card__text">
+            <strong id="start-label">University of Santo Tomas</strong>
+          </div>
+          <div class="start-card__actions">
+            <button class="icon-btn" id="locate-btn" title="Use my location" aria-label="Use my location">
+              <svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7.5"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></svg>
+            </button>
+            <button class="icon-btn" id="pick-btn" title="Pick on map" aria-label="Pick start on map" aria-pressed="false">
+              <svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+            </button>
+            <button class="icon-btn" id="start-reset" title="Start from UST" aria-label="Start from UST" hidden>
+              <svg class="i" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="filter">
+          <div class="chips" id="type-chips" role="group" aria-label="Cuisine"></div>
+        </div>
+
+        <div class="filter">
+          <div class="seg" id="budget-seg" role="radiogroup" aria-label="Budget per person"></div>
+        </div>
+
+        <div class="list-head">
+          <h2 id="place-count"></h2>
+        </div>
+        <ul class="cards" id="place-list" aria-live="polite"></ul>
+      </section>
+
+      <!-- view 2: route to the chosen place -->
+      <section class="view" id="view-route" aria-label="Directions">
+        <button class="back" id="back-btn">
+          <svg class="i" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Back
+        </button>
+
+        <div class="dest">
+          <span class="dest__badge" id="dest-badge" aria-hidden="true"></span>
+          <div class="dest__text">
+            <h2 id="dest-name"></h2>
+            <p class="muted" id="dest-meta"></p>
+          </div>
+        </div>
+
+        <ol class="trip" aria-label="Trip">
+          <li><span class="trip__dot trip__dot--start"></span><span id="trip-from"></span></li>
+          <li><span class="trip__dot trip__dot--end"></span><span id="trip-to"></span></li>
+        </ol>
+
+        <div class="controls">
+          <div class="seg seg--grow" id="profile-seg" role="radiogroup" aria-label="Route type"></div>
+          <div class="seg" id="unit-seg" role="radiogroup" aria-label="Units"></div>
+        </div>
+
+        <div class="summary" id="route-summary" aria-live="polite"></div>
+
+        <div class="route-error" id="route-error" role="alert" hidden>
+          <p id="route-error-text"></p>
+          <button class="btn" id="retry-btn">Try again</button>
+        </div>
+
+        <div class="list-head" id="steps-head">
+          <h3 id="steps-title">Directions</h3>
+        </div>
+        <ol class="steps" id="steps"></ol>
+      </section>
+    </div>
+  </aside>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <!-- settings from Flask (food types, budgets, UST location, whether a key is set) -->
+  <script id="config" type="application/json">{{ config | tojson }}</script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>
