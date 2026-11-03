@@ -3,7 +3,14 @@ Food places near UST and the filter functions.
 
 Names, streets and coordinates are from OpenStreetMap
 (© OpenStreetMap contributors). Prices are only our estimates.
+
+To add a place: add a dictionary to FOOD_PLACES with name, type, budget,
+address and location ("lat,lng"). New food types show up on the page automatically.
 """
+
+import re
+
+UST_NAME = "University of Santo Tomas"
 
 # default start point (UST)
 UST_LOCATION = "14.6096,120.9894"
@@ -65,6 +72,24 @@ FOOD_PLACES = [
     {"name": "BigBrew Dapitan", "type": "Milk Tea", "budget": "Under ₱150",
      "address": "Carola Street, Sampaloc, Manila", "location": "14.613885,120.990380"},
 ]
+
+
+def _slug(name):
+    """"John Ken's Tapsilogan" -> "john-ken-s-tapsilogan" (used as a stable id in URLs)."""
+    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+
+
+# give every place an id the web page can send back (e.g. in /api/route)
+for _place in FOOD_PLACES:
+    _place["id"] = _slug(_place["name"])
+
+
+def get_place(place_id):
+    """The food place with this id, or None."""
+    for place in FOOD_PLACES:
+        if place["id"] == place_id:
+            return place
+    return None
 
 
 def get_food_types():
