@@ -23,7 +23,9 @@ GitHub collaborators: derpytadpole (repo owner), Juzzyboi, yaothesadcat, yujitas
 ## Features
 - **Single-page web app** – the page never reloads. The browser talks to the Flask
   server through a small JSON REST API (`/api/...`), and Flask talks to GraphHopper.
-- **18 food places near UST** across 8 food types, sorted by distance from your starting point
+- **270+ food places within 1 km of UST**, from chains to silog spots, Dimsum Treats, carinderias,
+  pares houses, ihaw-ihaw, bakeries and milk tea, sorted by distance from your starting point.
+  18 are the team's hand-checked picks; the rest come from an OpenStreetMap scan (`scan_places.py`)
 - **Live filters** – food type chips (with counts) and a budget selector update the list and map instantly
 - **Live search** (GraphHopper Geocoding API) – our own places match as you type, then any place
   within 5 km of UST. Pick a result to get directions, or **Start here** to use it as the start.
@@ -60,12 +62,25 @@ python app.py
 ```
 Then open http://127.0.0.1:5000. Press `Ctrl+C` in the terminal to stop it.
 
+## Refreshing the food places
+```
+python scan_places.py          # scan 1 km around UST
+python scan_places.py 1500     # or a bigger radius in meters
+```
+This asks OpenStreetMap (Overpass API, no key needed) for every restaurant, fast food stall,
+café, bakery and dessert shop near UST, sorts each into a food type from its name and tags,
+gives it an estimated budget for that type, and saves `data/food_places.json`. Restart the app
+afterwards. Places in the team's list in `food_places.py` always win over scanned duplicates.
+
 ## Code structure
 ```
 Kainterra/
 ├── app.py               # Flask server: the page + JSON API, input validation
 ├── routing_api.py       # GraphHopper calls (route, search, reverse geocode) + caching
-├── food_places.py       # Food place data and filters
+├── food_places.py       # Food place data and filters (team list + scanned file)
+├── scan_places.py       # Scans OpenStreetMap for food places near UST
+├── data/
+│   └── food_places.json # Scanned places (made by scan_places.py)
 ├── templates/
 │   └── index.html       # Page layout (Jinja template)
 ├── static/
@@ -115,4 +130,4 @@ switching to another routing API means changing `routing_api.py` only.
 - Routes: [GraphHopper Directions API](https://docs.graphhopper.com/#tag/Routing-API)
 - Search: [GraphHopper Geocoding API](https://docs.graphhopper.com/#tag/Geocoding-API) (free plan: at most 10 results per request)
 - Map tiles, place names and coordinates: © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors.
-  Price ranges are the team's estimates.
+  Price ranges are the team's estimates (scanned places: estimated from the food type).
