@@ -40,7 +40,7 @@ GitHub collaborators: derpytadpole (repo owner), Juzzyboi, yaothesadcat, yujitas
 - **Input validation and clear error messages** – bad coordinates, unknown place, missing/invalid key,
   rate limit, timeout, no internet
 - **Responsive, minimal design** – side panel on desktop, draggable bottom sheet on phones,
-  automatic light/dark mode, smooth animations (turned off if your system asks for reduced motion)
+  clean light theme with UST highlighted on the map, smooth animations (turned off if your system asks for reduced motion)
 - **Saves API credits** – the server caches routes and searches, so switching km/mi or reopening a place is free
 
 ## Setup
@@ -98,7 +98,7 @@ Kainterra/
 | `app.py` | **Web server.** Serves the page and the JSON endpoints below; checks every input before calling GraphHopper |
 | `templates/index.html` | **Page layout.** Settings for the JavaScript are passed in a `<script id="config">` JSON block |
 | `static/js/app.js` | **Front end.** Numbered sections: helpers, server calls, map, explore view, search, start point, route view, views/history/bottom sheet, start-up |
-| `static/css/style.css` | **Design.** Colors, radii and easing are tokens in `:root`; dark mode only swaps tokens |
+| `static/css/style.css` | **Design.** Colors, radii and easing are tokens in `:root` (light theme only) |
 
 ### JSON API
 | Method | Path | Input | Returns |

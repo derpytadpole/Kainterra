@@ -38,28 +38,6 @@
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0a0a0a;
-    --surface: #141414;
-    --surface-2: #1e1e1e;
-    --surface-3: #2a2a2a;
-    --ink: #fafafa;
-    --ink-2: #b8b8b8;
-    --ink-3: #7e7e7e;
-    --line: #2a2a2a;
-    --accent: #ffd60a;
-    --accent-ink: #0a0a0a;
-    --accent-soft: rgba(255, 214, 10, 0.2);
-    --danger: #ff6b61;
-    --danger-soft: rgba(255, 107, 97, 0.12);
-    --pin-ring: #141414;
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 12px -4px rgba(0, 0, 0, 0.5);
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 20px 50px -18px rgba(0, 0, 0, 0.8);
-    color-scheme: dark;
-  }
-}
-
 /* ---------------------------------------------------------------- base */
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -102,9 +80,6 @@ body.is-picking #map, body.is-picking .leaflet-interactive { cursor: crosshair; 
 
 /* mute the colorful OpenStreetMap tiles into a calm, minimal basemap */
 .basemap { filter: grayscale(1) contrast(0.9) brightness(1.06); }
-@media (prefers-color-scheme: dark) {
-  .basemap { filter: grayscale(1) invert(1) hue-rotate(180deg) brightness(0.82) contrast(0.88); }
-}
 
 .leaflet-bottom { bottom: var(--sheet-offset); }
 .leaflet-control-attribution {
@@ -167,6 +142,26 @@ body.is-picking #map, body.is-picking .leaflet-interactive { cursor: crosshair; 
   border: 2px solid var(--accent);
   animation: pulse 1.8s var(--ease) infinite;
 }
+
+/* UST campus highlight: yellow area + label, always visible */
+.ust-area {
+  fill: var(--accent); fill-opacity: 0.2;
+  stroke: #e0b400; stroke-width: 2; stroke-dasharray: 6 5;
+  animation: fade 0.8s var(--ease) both;
+}
+.ust-label-wrap { display: grid; place-items: center; }
+.ust-label {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 11px 6px 8px; border-radius: 999px;
+  background: var(--ink); color: var(--accent);
+  font: 700 12px var(--font); letter-spacing: 0.04em; white-space: nowrap;
+  box-shadow: 0 4px 14px -4px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  animation: pop 0.5s 0.2s var(--spring) both;
+  transition: transform 0.25s var(--spring);
+}
+.ust-label:hover { transform: scale(1.06); }
+.ust-label svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 .route-casing { stroke: #0a0a0a; stroke-opacity: 0.95; animation: fade 0.6s var(--ease) both; }
 .route-line { stroke: var(--accent); }
